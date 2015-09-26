@@ -181,23 +181,30 @@ public class MainActivity extends ActionBarActivity implements NavigationDrawerF
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d("Activity","resutl "+requestCode+" "+resultCode);
-        if (requestCode == 1) {
-            if (resultCode == RESULT_OK) {
-                FragmentManager fragmentManager = getSupportFragmentManager();
-                AddBook nextFragment = new AddBook();
 
-                Bundle b = new Bundle();
-                b.putString("data",data.getStringExtra("ISBN"));
-                nextFragment.setArguments(b);
+        IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
 
-                fragmentManager.beginTransaction()
-                        .replace(R.id.container, nextFragment)
-                        .addToBackStack((String) title)
-                        .commitAllowingStateLoss();
+        if (scanningResult != null) {
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            AddBook nextFragment = new AddBook();
 
-            }
+            Bundle b = new Bundle();
+            b.putString("data",scanningResult.getContents());
+            nextFragment.setArguments(b);
+
+            fragmentManager.beginTransaction()
+                    .replace(R.id.container, nextFragment)
+                    .addToBackStack((String) title)
+                    .commitAllowingStateLoss();
+        }else{
+            Toast toast = Toast.makeText(getApplicationContext(),
+                    "No scan data received!", Toast.LENGTH_SHORT);
+            toast.show();
         }
+
+
+
+
     }
 
 }

@@ -38,6 +38,8 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
     private String mScanFormat = "Format:";
     private String mScanContents = "Contents:";
 
+    private boolean eanTextGlobal = true;
+
 
 
     public AddBook(){
@@ -46,31 +48,32 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        if(ean!=null) {
+        if(ean  != null) {
             outState.putString(EAN_CONTENT, ean.getText().toString());
         }
     }
 
     private void startBookSerVice(Editable s){
-        String ean =s.toString();
+        String ean = s.toString();
         //catch isbn10 numbers
-        if(ean.length()==10 && !ean.startsWith("978")){
-            ean="978"+ean;
+        if (ean.length() == 10 && !ean.startsWith("978")) {
+            ean = "978" + ean;
+        }
+
+        if( ean.length() == 13){
+            //Once we have an ISBN, start a book intent
+            Intent bookIntent = new Intent(getActivity(), BookService.class);
+            bookIntent.putExtra(BookService.EAN, ean);
+            bookIntent.setAction(BookService.FETCH_BOOK);
+            getActivity().startService(bookIntent);
+            AddBook.this.restartLoader();
         }
 
         //If we pass the 13 than we should creal the field.
-        if(ean.length()>13){
+        if (ean.length() > 13) {
             clearFields();
-            return;
         }
 
-        this.ean.setText(ean);
-        //Once we have an ISBN, start a book intent
-        Intent bookIntent = new Intent(getActivity(), BookService.class);
-        bookIntent.putExtra(BookService.EAN, ean);
-        bookIntent.setAction(BookService.FETCH_BOOK);
-        getActivity().startService(bookIntent);
-        AddBook.this.restartLoader();
     }
 
     @Override
@@ -80,7 +83,7 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
         ean = (EditText) rootView.findViewById(R.id.ean);
 
         Bundle bundle = getArguments();
-        if(bundle != null) {
+        if(bundle != null && savedInstanceState == null) {
             ean.setText(bundle.getString("data"));
             startBookSerVice(ean.getText());
         }
@@ -105,7 +108,8 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
         rootView.findViewById(R.id.scan_button).setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivityForResult(new Intent(getActivity(), CameraActivity.class), 1);
+                IntentIntegrator integrator = new IntentIntegrator(getActivity());
+                integrator.initiateScan();
             }
         });
 
@@ -113,6 +117,7 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
             @Override
             public void onClick(View view) {
                 ean.setText("");
+                clearFields();
             }
         });
 
@@ -124,6 +129,7 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
                 bookIntent.setAction(BookService.DELETE_BOOK);
                 getActivity().startService(bookIntent);
                 ean.setText("");
+                clearFields();
             }
         });
 
@@ -171,7 +177,13 @@ public class AddBook extends Fragment implements LoaderManager.LoaderCallbacks<C
         ((TextView) rootView.findViewById(R.id.bookSubTitle)).setText(bookSubTitle);
 
         String authors = data.getString(data.getColumnIndex(AlexandriaContract.AuthorEntry.AUTHOR));
-        String[] authorsArr = authors.split(",");
+        String[] authorsArr = {""};
+        if(authors != null)
+            authorsArr = authors.split(",");
+        else
+            authors = "";
+
+
         ((TextView) rootView.findViewById(R.id.authors)).setLines(authorsArr.length);
         ((TextView) rootView.findViewById(R.id.authors)).setText(authors.replace(",","\n"));
         String imgUrl = data.getString(data.getColumnIndex(AlexandriaContract.BookEntry.IMAGE_URL));
